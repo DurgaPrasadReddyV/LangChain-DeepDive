@@ -5,17 +5,10 @@ from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
 from pydantic import BaseModel, Field
 
 load_dotenv()
-
-lf = Langfuse(
-    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-    host=os.getenv("LANGFUSE_HOST"),
-)
 
 langfuse_handler = CallbackHandler(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
@@ -67,6 +60,7 @@ template = PromptTemplate(
     Review by Prasad
     \n {format_instruction}
     """,
+    input_variables=[],
     partial_variables={"format_instruction": parser.get_format_instructions()},
 )
 

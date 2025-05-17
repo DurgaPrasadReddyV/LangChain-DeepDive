@@ -5,17 +5,10 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import BaseMessage
 from langchain_core.prompt_values import PromptValue
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
 from langfuse.decorators import observe
 
 load_dotenv()
-
-lf = Langfuse(
-    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-    host=os.getenv("LANGFUSE_HOST"),
-)
 
 langfuse_handler = CallbackHandler(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
@@ -30,7 +23,6 @@ model = ChatGoogleGenerativeAI(
 )
 
 
-# Traced Functions
 @observe(as_type="generation")
 def execute_prompt(prompt: PromptValue) -> BaseMessage:
     result = model.invoke(prompt, config={"callbacks": [langfuse_handler]})

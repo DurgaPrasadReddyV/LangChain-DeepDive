@@ -3,10 +3,9 @@ from typing import List
 
 from dotenv import load_dotenv
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-# Langfuse imports
 from langfuse.decorators import langfuse_context, observe
 from numpy import ndarray
+from pydantic import SecretStr
 from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
@@ -18,8 +17,16 @@ langfuse_context.configure(
     enabled=True,
 )
 
+google_api_key = os.getenv("GOOGLE_API_KEY")
+if not google_api_key:
+    raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+
+embedding_model_name = os.getenv("EMBEDDING_MODEL")
+if not embedding_model_name:
+    raise ValueError("EMBEDDING_MODEL environment variable is not set.")
+
 embedding_model = GoogleGenerativeAIEmbeddings(
-    google_api_key=os.getenv("GOOGLE_API_KEY"), model=os.getenv("EMBEDDING_MODEL")
+    google_api_key=SecretStr(google_api_key), model=embedding_model_name
 )
 
 
@@ -32,12 +39,13 @@ def calculate_similarity(query: str, documents: List[str]) -> ndarray:
     )
     doc_embeddings = embedding_model.embed_documents(documents)
     query_embedding = embedding_model.embed_query(query)
-    scores = cosine_similarity([query_embedding], doc_embeddings)
+    import numpy as np
+
+    scores = cosine_similarity(np.array([query_embedding]), np.array(doc_embeddings))
 
     langfuse_context.update_current_observation(
         output={"doc_embeddings": doc_embeddings, "query_embedding": query_embedding}
     )
-    langfuse_context.flush()
     return scores
 
 
@@ -58,6 +66,7 @@ def main():
     print(query)
     print(documents[index])
     print("similarity score is:", score)
+    langfuse_context.flush()
 
 
 if __name__ == "__main__":

@@ -3,9 +3,8 @@ from typing import List
 
 from dotenv import load_dotenv
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-# Langfuse imports
 from langfuse.decorators import langfuse_context, observe
+from pydantic import SecretStr
 
 load_dotenv()
 
@@ -16,8 +15,16 @@ langfuse_context.configure(
     enabled=True,
 )
 
+google_api_key = os.getenv("GOOGLE_API_KEY")
+if not google_api_key:
+    raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+
+embedding_model_name = os.getenv("EMBEDDING_MODEL")
+if not embedding_model_name:
+    raise ValueError("EMBEDDING_MODEL environment variable is not set.")
+
 embedding_model = GoogleGenerativeAIEmbeddings(
-    google_api_key=os.getenv("GOOGLE_API_KEY"), model=os.getenv("EMBEDDING_MODEL")
+    google_api_key=SecretStr(google_api_key), model=embedding_model_name
 )
 
 
@@ -30,7 +37,6 @@ def generate_embeddings_query(query: str) -> List[float]:
     )
     result = embedding_model.embed_query(query)
     langfuse_context.update_current_observation(output=result)
-    langfuse_context.flush()
     return result
 
 
@@ -39,6 +45,7 @@ def main():
     embedding_query = "Delhi is the capital of India"
     result = generate_embeddings_query(embedding_query)
     print(result)
+    langfuse_context.flush()
 
 
 if __name__ == "__main__":

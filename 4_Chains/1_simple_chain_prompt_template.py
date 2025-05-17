@@ -2,18 +2,12 @@ import os
 
 from dotenv import load_dotenv
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
 
 load_dotenv()
 
-lf = Langfuse(
-    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-    host=os.getenv("LANGFUSE_HOST"),
-)
 
 langfuse_handler = CallbackHandler(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
@@ -29,20 +23,16 @@ model = ChatGoogleGenerativeAI(
 
 parser = StrOutputParser()
 
-# Define prompt templates (no need for separate Runnable chains)
-prompt_template = ChatPromptTemplate.from_messages(
-    [
-        ("system", "You are a comedian who tells jokes about {topic}."),
-        ("human", "Tell me {joke_count} jokes."),
-    ]
+prompt = PromptTemplate(
+    template="Generate 5 interesting facts about {topic}", input_variables=["topic"]
 )
 
 
 def main():
-    chain = prompt_template | model | parser
+    chain = prompt | model | parser
 
     result = chain.invoke(
-        {"topic": "lawyers", "joke_count": 3}, config={"callbacks": [langfuse_handler]}
+        {"topic": "cricket"}, config={"callbacks": [langfuse_handler]}
     )
     print(result)
     langfuse_handler.flush()

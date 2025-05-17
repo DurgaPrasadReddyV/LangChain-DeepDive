@@ -1,20 +1,13 @@
 import os
 
 from dotenv import load_dotenv
-from langchain.schema.runnable import RunnableLambda
+from langchain.schema.runnable import RunnableLambda, RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
 
 load_dotenv()
-
-lf = Langfuse(
-    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-    host=os.getenv("LANGFUSE_HOST"),
-)
 
 langfuse_handler = CallbackHandler(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
@@ -30,7 +23,7 @@ model = ChatGoogleGenerativeAI(
 
 parser = StrOutputParser()
 
-# Define prompt templates
+# Define prompt templates (no need for separate Runnable chains)
 prompt_template = ChatPromptTemplate.from_messages(
     [
         ("system", "You are a comedian who tells jokes about {topic}."),
@@ -38,13 +31,14 @@ prompt_template = ChatPromptTemplate.from_messages(
     ]
 )
 
-# Define additional processing steps using RunnableLambda
-uppercase_output = RunnableLambda(lambda x: x.upper())
-count_words = RunnableLambda(lambda x: f"Word count: {len(x.split())}\n{x}")
-
 
 def main():
-    chain = prompt_template | model | parser | uppercase_output | count_words
+    format_prompt = RunnableLambda(lambda x: prompt_template.format_prompt(**x))
+    invoke_model = RunnableLambda(lambda x: model.invoke(x.to_messages()))
+    parse_output = RunnableLambda(lambda x: x.content)
+    chain = RunnableSequence(
+        first=format_prompt, middle=[invoke_model], last=parse_output
+    )
     result = chain.invoke(
         {"topic": "lawyers", "joke_count": 3}, config={"callbacks": [langfuse_handler]}
     )
